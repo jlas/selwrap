@@ -1,4 +1,4 @@
-from time import sleep
+import time
 from functools import partial
 
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -6,8 +6,21 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 
-def _lookup(multi, by, webdriver, byVal, wait=1, element=None):
+DEFAULT_WAIT = 1
+
+
+class Error(Exception):
+    pass
+
+
+def setDefaultWait(wait):
+    global DEFAULT_WAIT
+    DEFAULT_WAIT = wait
+
+
+def _lookup(multi, by, webdriver, byVal, wait=None, element=None):
     source = element or webdriver
+    wait = wait or DEFAULT_WAIT
     funcpre = 'find_element_by_'
     if multi:
         funcpre = 'find_elements_by_'
@@ -53,35 +66,35 @@ class ElementFinder(object):
         return wrapped
 
     @_handleErrors
-    def _id(self, _id, wait=1):
+    def _id(self, _id, wait=None):
         return _lookupId(self.webdriver, _id, wait, self.element)
 
     @_handleErrors
-    def _class(self, _class, wait=1):
+    def _class(self, _class, wait=None):
         return _lookupClass(self.webdriver, _class, wait, self.element)
 
     @_handleErrors
-    def _tag(self, _tag, wait=1):
+    def _tag(self, _tag, wait=None):
         return _lookupTag(self.webdriver, _tag, wait, self.element)
 
     @_handleErrors
-    def _css(self, _css, wait=1):
+    def _css(self, _css, wait=None):
         return _lookupCss(self.webdriver, _css, wait, self.element)
 
     @_handleErrors
-    def _mId(self, _id, wait=1):
+    def _mId(self, _id, wait=None):
         return _mLookupId(self.webdriver, _id, wait, self.element)
 
     @_handleErrors
-    def _mTag(self, _tag, wait=1):
+    def _mTag(self, _tag, wait=None):
         return _mLookupTag(self.webdriver, _tag, wait, self.element)
 
     @_handleErrors
-    def _mClass(self, _class, wait=1):
+    def _mClass(self, _class, wait=None):
         return _mLookupClass(self.webdriver, _class, wait, self.element)
 
     @_handleErrors
-    def _mCss(self, _css, wait=1):
+    def _mCss(self, _css, wait=None):
         return _mLookupCss(self.webdriver, _css, wait, self.element)
 
 
@@ -134,17 +147,24 @@ window.scrollTo(0, Math.max(
             return (self.webdriver.title == self.pageTitle)
         else:
             # No title provided, so just sleep and hope the page is loaded
-            sleep(1)
+            time.sleep(1)
             return True
 
     def _waitUntilOpen(self):
         while not self._isOpen():
-            sleep(0.1)
+            time.sleep(0.1)
+
+    def _waitUntilChanged(self):
+        start_t = time.time()
+        while self.webdriver.title == self.pageTitle:
+            if time.time() - start_t > 10:
+                raise Error('Waiting too long for page to change')
+            time.sleep(1)
 
     def _tmpOpen(self, el, wait=0.2):
         """Open link in new window, then close."""
         el.send_keys(Keys.SHIFT+Keys.RETURN)
-        sleep(wait)
+        time.sleep(wait)
         for windowHandle in self.webdriver.window_handles:
             if windowHandle != self.baseWin:
                 self.webdriver.switch_to_window(windowHandle)
