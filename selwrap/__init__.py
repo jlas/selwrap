@@ -7,6 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 
 DEFAULT_WAIT = 1
+DEFAULT_SCREENSHOT_PATH = None
 
 
 class Error(Exception):
@@ -16,6 +17,14 @@ class Error(Exception):
 def setDefaultWait(wait):
     global DEFAULT_WAIT
     DEFAULT_WAIT = wait
+
+def setDefaultScreenshotPath(path):
+    global DEFAULT_SCREENSHOT_PATH
+    DEFAULT_SCREENSHOT_PATH = path
+
+def _maybeTakeScreenshot(webdriver):
+    if DEFAULT_SCREENSHOT_PATH:
+        webdriver.save_screenshot(DEFAULT_SCREENSHOT_PATH)
 
 
 def _lookup(multi, by, webdriver, byVal, wait=None, element=None):
@@ -31,12 +40,14 @@ def _lookup(multi, by, webdriver, byVal, wait=None, element=None):
             w.until(lambda x: findByFunc(byVal))
         except TimeoutException, e:
             print 'Got TimeoutException waiting on', by, ':', byVal
+            _maybeTakeScreenshot(webdriver)
     try:
         if multi:
             return [ElementWrapper(webdriver, el) for el in findByFunc(byVal)]
         return ElementWrapper(webdriver, findByFunc(byVal))
     except NoSuchElementException, e:
-        return None
+        _maybeTakeScreenshot(webdriver)
+
 
 _lookupId = partial(_lookup, False, By.ID)
 _lookupTag = partial(_lookup, False, By.TAG_NAME)
@@ -60,6 +71,7 @@ class ElementFinder(object):
             try:
                 return func(self, *args, **kwargs)
             except:
+                _maybeTakeScreenshot(webdriver)
                 if not self.ignoreError:
                     raise
                 print 'Error ignored'
