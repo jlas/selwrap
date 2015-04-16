@@ -71,7 +71,7 @@ class ElementFinder(object):
             try:
                 return func(self, *args, **kwargs)
             except:
-                _maybeTakeScreenshot(webdriver)
+                _maybeTakeScreenshot(self.webdriver)
                 if not self.ignoreError:
                     raise
                 print 'Error ignored'
